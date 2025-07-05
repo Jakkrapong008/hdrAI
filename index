@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบสืบค้นข้อมูลด้วย AI</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Sarabun -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #fce4ec; /* Pastel Pink/Red */
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            flex-grow: 1;
+        }
+        .header {
+            background-color: #fff;
+            padding: 20px;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center the content */
+            flex-direction: column; /* Stack logo, title, subtitle */
+            text-align: center;
+            position: relative; /* For logo positioning */
+        }
+        .header .logo {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 80px; /* Adjust logo size */
+            height: auto;
+            border-radius: 10px;
+        }
+        .main-title {
+            font-size: 2.5rem; /* Large font size */
+            font-weight: 700; /* Bold */
+            color: #d32f2f; /* Darker red for emphasis */
+            margin-top: 10px; /* Space for logo */
+        }
+        .sub-title {
+            font-size: 1.2rem;
+            color: #555;
+            margin-top: 5px;
+        }
+        .footer {
+            background-color: #fff;
+            padding: 15px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #777;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.05);
+            margin-top: 20px;
+        }
+        .tab-button {
+            padding: 12px 25px;
+            border-radius: 15px;
+            background-color: #ffcdd2; /* Light pastel red */
+            color: #d32f2f;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 0 10px;
+        }
+        .tab-button.active {
+            background-color: #d32f2f; /* Active tab color */
+            color: #fff;
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+        }
+        .tab-button:hover:not(.active) {
+            background-color: #ef9a9a; /* Hover color */
+            transform: translateY(-1px);
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            margin-top: 25px;
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px 18px;
+            border: 2px solid #ffcdd2;
+            border-radius: 15px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #d32f2f;
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.2);
+        }
+        .submit-button, .clear-button {
+            background-color: #d32f2f;
+            color: #fff;
+            padding: 12px 25px;
+            border-radius: 15px;
+            font-weight: 700;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+        .submit-button:hover, .clear-button:hover {
+            background-color: #c62828;
+            transform: translateY(-2px);
+        }
+        .submit-button:active, .clear-button:active {
+            transform: translateY(0);
+        }
+        .clear-button {
+            background-color: #ef5350; /* A slightly different red for clear */
+            margin-top: 10px; /* Space between submit and clear */
+        }
+        .clear-button:hover {
+            background-color: #e53935;
+        }
+        .response-area {
+            background-color: #f8f8f8;
+            border: 1px solid #eee;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 200px;
+            white-space: pre-wrap; /* Preserve whitespace and wrap text */
+            word-wrap: break-word; /* Break long words */
+            overflow-x: auto; /* Allow horizontal scrolling for code blocks */
+            margin-bottom: 20px; /* Added space below response area */
+        }
+        .response-area img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin: 10px 0;
+            display: block;
+        }
+        .response-area pre {
+            background-color: #2d2d2d; /* Dark background for code */
+            color: #f8f8f2; /* Light text for code */
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .response-area code {
+            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace; /* Monospace font for code */
+            font-size: 0.9em;
+        }
+
+        /* Login Modal Styling */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            animation: fadeInScale 0.3s ease-out;
+        }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-input {
+            width: calc(100% - 30px);
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border: 2px solid #ffcdd2;
+            border-radius: 15px;
+            font-size: 1.1rem;
+        }
+        .modal-input:focus {
+            outline: none;
+            border-color: #d32f2f;
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.2);
+        }
+        .modal-button {
+            background-color: #d32f2f;
+            color: #fff;
+            padding: 12px 30px;
+            border-radius: 15px;
+            font-weight: 700;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+        .modal-button:hover {
+            background-color: #c62828;
+            transform: translateY(-2px);
+        }
+        .modal-message {
+            margin-top: 15px;
+            color: #d32f2f;
+            font-weight: 600;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #d32f2f;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #d32f2f;
+            margin-top: 10px;
+            font-weight: 600;
+            display: none; /* Hidden by default */
+        }
+        .chart-container {
+            position: relative;
+            height: 400px; /* Fixed height for chart */
+            width: 100%;
+        }
+        .no-data-message {
+            text-align: center;
+            color: #777;
+            margin-top: 50px;
+            font-size: 1.1rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header .logo {
+                position: static; /* Stack logo on smaller screens */
+                transform: none;
+                margin-bottom: 10px;
+            }
+            .main-title {
+                font-size: 1.8rem;
+            }
+            .sub-title {
+                font-size: 1rem;
+            }
+            .tab-button {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+                margin: 0 5px;
+            }
+            .card {
+                padding: 20px;
+            }
+            .modal-content {
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4 text-pink-700">เข้าสู่ระบบ 🔐</h2>
+            <p class="mb-4 text-gray-600">กรุณากรอกรหัสผ่านของคุณเพื่อเข้าใช้งาน</p>
+            <input type="password" id="passwordInput" class="modal-input" placeholder="รหัสผ่าน">
+            <button id="loginButton" class="modal-button">เข้าสู่ระบบ</button>
+            <div id="loginMessage" class="modal-message"></div>
+            <div id="loginSpinner" class="loading-spinner"></div>
+        </div>
+    </div>
+
+    <div class="header">
+        <img src="https://img2.pic.in.th/pic/logo-HDR.md.png" alt="Logo" class="logo">
+        <h1 class="main-title">ระบบสืบค้นข้อมูลด้วย AI 🤖</h1>
+        <p class="sub-title">โรงเรียนหางดงรัฐราษฎร์อุปถัมภ์</p>
+    </div>
+
+    <div class="container">
+        <div class="flex justify-center mb-6">
+            <button id="searchTabBtn" class="tab-button active">การสืบค้นข้อมูล 🔍</button>
+            <button id="statsTabBtn" class="tab-button">สถิติการใช้งาน 📊</button>
+        </div>
+
+        <!-- Search Tab Content -->
+        <div id="searchTabContent" class="tab-content card">
+            <p class="text-lg font-semibold mb-4 text-pink-700">สวัสดีคุณ: <span id="userName"></span> 👋</p>
+
+            <div class="mt-8">
+                <h3 class="text-xl font-bold mb-3 text-pink-700">ผลลัพธ์: ✨</h3>
+                <div id="responseArea" class="response-area">
+                    <p class="text-gray-500">คำตอบจะปรากฏที่นี่หลังจากคุณส่งคำถาม</p>
+                </div>
+            </div>
+
+            <!-- Moved question input and submit button below response area -->
+            <div class="mb-5">
+                <label for="questionInput" class="block text-gray-700 text-sm font-bold mb-2">คำถามของคุณ: 🤔</label>
+                <textarea id="questionInput" class="input-field h-32 resize-y" placeholder="พิมพ์คำถามของคุณที่นี่..."></textarea>
+            </div>
+            <button id="submitQuestionBtn" class="submit-button w-full">ส่งคำถาม</button>
+            <button id="clearChatBtn" class="clear-button w-full mt-3">ล้างข้อมูล (เริ่มต้นใหม่) 🧹</button>
+
+
+            <div id="loadingIndicator" class="loading-spinner"></div>
+            <p id="loadingText" class="loading-text">กำลังค้นหาคำตอบจาก AI... โปรดรอสักครู่ ⏳</p>
+        </div>
+
+        <!-- Statistics Tab Content -->
+        <div id="statsTabContent" class="tab-content card hidden">
+            <h2 class="text-2xl font-bold mb-5 text-pink-700 text-center">สถิติการใช้งานระบบ 📈</h2>
+            <div class="flex flex-col md:flex-row items-center justify-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
+                <div class="flex items-center space-x-2">
+                    <label for="filterYear" class="text-gray-700 font-semibold">ปี:</label>
+                    <select id="filterYear" class="input-field w-32 px-3 py-2 rounded-lg border focus:border-d32f2f focus:ring focus:ring-d32f2f focus:ring-opacity-20">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label for="filterMonth" class="text-gray-700 font-semibold">เดือน:</label>
+                    <select id="filterMonth" class="input-field w-32 px-3 py-2 rounded-lg border focus:border-d32f2f focus:ring focus:ring-d32f2f focus:ring-opacity-20">
+                        <option value="">ทั้งหมด</option>
+                        <option value="01">มกราคม</option>
+                        <option value="02">กุมภาพันธ์</option>
+                        <option value="03">มีนาคม</option>
+                        <option value="04">เมษายน</option>
+                        <option value="05">พฤษภาคม</option>
+                        <option value="06">มิถุนายน</option>
+                        <option value="07">กรกฎาคม</option>
+                        <option value="08">สิงหาคม</option>
+                        <option value="09">กันยายน</option>
+                        <option value="10">ตุลาคม</option>
+                        <option value="11">พฤศจิกายน</option>
+                        <option value="12">ธันวาคม</option>
+                    </select>
+                </div>
+                <button id="filterStatsBtn" class="submit-button px-6 py-2 rounded-lg">ค้นหา 🔎</button>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg shadow-md">
+                <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                    <thead>
+                        <tr class="bg-pink-100 text-d32f2f uppercase text-sm leading-normal">
+                            <th class="py-3 px-6 text-left">วันที่ 📅</th>
+                            <th class="py-3 px-6 text-center">จำนวนครั้ง 🔢</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statsTableBody" class="text-gray-700 text-sm font-light">
+                        <!-- Table rows will be populated by JS -->
+                    </tbody>
+                </table>
+                <p id="noStatsMessage" class="no-data-message hidden py-10">ยังไม่มีข้อมูลสถิติการใช้งาน 😔</p>
+            </div>
+            <p class="text-gray-600 text-center mt-5">แสดงจำนวนครั้งที่มีการใช้งานระบบในแต่ละวัน</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>จัดทำโดย กลุ่มงานวิชาการ โรงเรียนหางดงรัฐราษฎร์อุปถัมภ์ 🎓</p>
+    </div>
+
+    <script>
+        // Google Apps Script URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxn9k7tdqK-JFrbp-Lw7_ce5jORnrYQTeZM5Tc96Ho2_mjJg3LBaiMCdyqz9dnr4n-I1A/exec';
+        console.log('Using Apps Script URL:', SCRIPT_URL);
+
+        const GEMINI_API_KEY = 'AIzaSyCRJeE997JfqEIzct8Qet9Fk9gYoZ1OOIs'; // User-provided API Key
+
+        let currentUserName = ''; // To store the logged-in user's name
+        let chatHistory = []; // To store the conversation history for follow-up questions
+
+        // DOM Elements
+        const loginModal = document.getElementById('loginModal');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginButton = document.getElementById('loginButton');
+        const loginMessage = document.getElementById('loginMessage');
+        const loginSpinner = document.getElementById('loginSpinner');
+
+        const searchTabBtn = document.getElementById('searchTabBtn');
+        const statsTabBtn = document.getElementById('statsTabBtn');
+        const searchTabContent = document.getElementById('searchTabContent');
+        const statsTabContent = document.getElementById('statsTabContent');
+
+        const userNameSpan = document.getElementById('userName');
+        const questionInput = document.getElementById('questionInput');
+        const submitQuestionBtn = document.getElementById('submitQuestionBtn');
+        const clearChatBtn = document.getElementById('clearChatBtn'); // New button
+        const responseArea = document.getElementById('responseArea');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingText = document.getElementById('loadingText');
+        
+        // New DOM elements for statistics tab
+        const filterYearSelect = document.getElementById('filterYear');
+        const filterMonthSelect = document.getElementById('filterMonth');
+        const filterStatsBtn = document.getElementById('filterStatsBtn');
+        const statsTableBody = document.getElementById('statsTableBody');
+        const noStatsMessage = document.getElementById('noStatsMessage'); // Already exists
+
+        let allUsageStats = {}; // To store all fetched stats for filtering
+
+        // Function to show/hide loading spinner and text
+        function showLoading(show) {
+            loadingIndicator.style.display = show ? 'block' : 'none';
+            loadingText.style.display = show ? 'block' : 'none';
+            submitQuestionBtn.disabled = show;
+            questionInput.disabled = show;
+            clearChatBtn.disabled = show; // Disable clear button during loading
+        }
+
+        // Function to show/hide login spinner
+        function showLoginSpinner(show) {
+            loginSpinner.style.display = show ? 'block' : 'none';
+            loginButton.disabled = show;
+            passwordInput.disabled = show;
+        }
+
+        // --- Login Logic ---
+        async function handleLogin() {
+            const password = passwordInput.value.trim();
+            if (!password) {
+                loginMessage.textContent = 'กรุณากรอกรหัสผ่าน 🚫';
+                return;
+            }
+
+            showLoginSpinner(true);
+            loginMessage.textContent = '';
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'validateUser',
+                        id: password,
+                    }).toString(),
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) { // Check response.ok for network errors
+                    currentUserName = result.userName;
+                    userNameSpan.textContent = currentUserName;
+                    loginModal.style.display = 'none'; // Hide modal
+                    loginMessage.textContent = '';
+                    passwordInput.value = ''; // Clear password field
+                    // Clear chat history on successful login for a fresh start
+                    chatHistory = [];
+                    responseArea.innerHTML = '<p class="text-gray-500">คำตอบจะปรากฏที่นี่หลังจากคุณส่งคำถาม</p>';
+                } else {
+                    // Handle non-200 responses or success: false
+                    loginMessage.textContent = result.message || 'รหัสผ่านไม่ถูกต้อง หรือเกิดข้อผิดพลาดในการเชื่อมต่อ ❌';
+                    console.error('Login failed:', result.message);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                loginMessage.textContent = 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ โปรดตรวจสอบการเชื่อมต่อหรือลองอีกครั้ง ❗';
+            } finally {
+                showLoginSpinner(false);
+            }
+        }
+
+        loginButton.addEventListener('click', handleLogin);
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+
+        // --- Tab Switching Logic ---
+        function switchTab(tabName) {
+            if (tabName === 'search') {
+                searchTabBtn.classList.add('active');
+                statsTabBtn.classList.remove('active');
+                searchTabContent.classList.remove('hidden');
+                statsTabContent.classList.add('hidden');
+            } else if (tabName === 'stats') {
+                statsTabBtn.classList.add('active');
+                searchTabBtn.classList.remove('active');
+                statsTabContent.classList.remove('hidden');
+                searchTabContent.classList.add('hidden');
+                fetchUsageStatistics(); // Fetch stats when tab is activated
+            }
+        }
+
+        searchTabBtn.addEventListener('click', () => switchTab('search'));
+        statsTabBtn.addEventListener('click', () => switchTab('stats'));
+
+        // --- Data Retrieval (Gemini AI) Logic ---
+        async function handleSubmitQuestion() {
+            const question = questionInput.value.trim();
+            if (!question) {
+                alert('กรุณาพิมพ์คำถามก่อนส่ง 🚫');
+                return;
+            }
+
+            showLoading(true);
+            // Append user's question to the response area
+            responseArea.innerHTML += `<div class="mb-4 p-3 bg-blue-50 text-blue-800 rounded-lg shadow-sm"><strong>คุณ:</strong> ${question}</div>`;
+            questionInput.value = ''; // Clear input field immediately
+
+            try {
+                // Log question to Google Sheet via Apps Script
+                const logResponse = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'logQuestion',
+                        name: currentUserName,
+                        question: question,
+                    }).toString(),
+                });
+                const logResult = await logResponse.json();
+                if (!logResult.success) {
+                    console.error('Failed to log question:', logResult.message);
+                    // Optionally, show a non-blocking message to the user about logging failure
+                }
+
+                // Add user's question to chat history
+                chatHistory.push({ role: "user", parts: [{ text: question }] });
+
+                // Call Gemini AI
+                const payload = { contents: chatHistory };
+                const apiKey = GEMINI_API_KEY; // Use the provided API key
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const aiResponseText = result.candidates[0].content.parts[0].text;
+                    // Add AI's response to chat history
+                    chatHistory.push({ role: "model", parts: [{ text: aiResponseText }] });
+                    // Use marked.js to convert Markdown to HTML and append to response area
+                    responseArea.innerHTML += `<div class="mb-4 p-3 bg-green-50 text-green-800 rounded-lg shadow-sm"><strong>AI:</strong> ${marked.parse(aiResponseText)}</div>`;
+                } else {
+                    responseArea.innerHTML += '<p class="text-red-500">ไม่สามารถรับคำตอบจาก AI ได้ โปรดลองอีกครั้ง 😥</p>';
+                    console.error('Unexpected Gemini API response structure or API error:', result);
+                }
+            } catch (error) {
+                console.error('Error during AI query or logging:', error);
+                responseArea.innerHTML += '<p class="text-red-500">เกิดข้อผิดพลาดในการสืบค้นข้อมูล โปรดตรวจสอบการเชื่อมต่อหรือลองอีกครั้ง ❗</p>';
+            } finally {
+                showLoading(false);
+                // Scroll to the bottom of the response area to show latest message
+                responseArea.scrollTop = responseArea.scrollHeight;
+            }
+        }
+
+        submitQuestionBtn.addEventListener('click', handleSubmitQuestion);
+        questionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { // Allow Shift+Enter for new line
+                e.preventDefault(); // Prevent default Enter key behavior (new line)
+                handleSubmitQuestion();
+            }
+        });
+
+        // --- Clear Chat Logic ---
+        clearChatBtn.addEventListener('click', () => {
+            chatHistory = []; // Clear conversation history
+            responseArea.innerHTML = '<p class="text-gray-500">คำตอบจะปรากฏที่นี่หลังจากคุณส่งคำถาม</p>'; // Reset response area
+            questionInput.value = ''; // Clear input field
+            alert('ล้างข้อมูลเรียบร้อยแล้ว! เริ่มต้นคำถามใหม่ได้เลย 😊');
+        });
+
+        // Helper function to format date to Thai Buddhist calendar
+        function formatThaiDate(dateString) {
+            const [year, month, day] = dateString.split('-');
+            // Create a Date object using CE year to ensure correct parsing
+            const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day)); 
+
+            const thaiMonths = [
+                'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+            ];
+
+            const thaiYear = date.getFullYear() + 543; // Convert CE to BE
+            const thaiMonth = thaiMonths[date.getMonth()];
+            const thaiDay = date.getDate();
+
+            return `${thaiDay} ${thaiMonth} ${thaiYear}`;
+        }
+
+        // --- Usage Statistics Logic ---
+        // Function to populate the year dropdown
+        function populateYearFilter(stats) {
+            const years = new Set();
+            Object.keys(stats).forEach(dateString => {
+                years.add(dateString.substring(0, 4)); // Extract year from YYYY-MM-DD
+            });
+
+            // Clear existing options and add "ทั้งหมด" option
+            filterYearSelect.innerHTML = '<option value="">ทั้งหมด</option>';
+            Array.from(years).sort((a, b) => b - a).forEach(year => { // Sort years in descending order
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                filterYearSelect.appendChild(option);
+            });
+            // Set current year as default if available
+            const currentYear = new Date().getFullYear().toString();
+            if (years.has(currentYear)) {
+                filterYearSelect.value = currentYear;
+            } else if (years.size > 0) {
+                // If current year not present, default to the latest year available
+                filterYearSelect.value = Array.from(years).sort((a, b) => b - a)[0];
+            }
+        }
+
+        // Function to render usage data as a table
+        function renderUsageTable(stats) {
+            statsTableBody.innerHTML = ''; // Clear previous rows
+            const sortedDates = Object.keys(stats).sort(); // Sort dates ascending by default
+
+            const selectedYear = filterYearSelect.value;
+            const selectedMonth = filterMonthSelect.value;
+
+            let hasData = false;
+            sortedDates.forEach(dateString => {
+                const [year, month, day] = dateString.split('-'); // YYYY-MM-DD
+
+                // Apply filters
+                if ((selectedYear === '' || year === selectedYear) &&
+                    (selectedMonth === '' || month === selectedMonth)) {
+
+                    const count = stats[dateString];
+                    const formattedDate = formatThaiDate(dateString); // Use the new helper function
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'border-gray-200', 'hover:bg-gray-100');
+                    row.innerHTML = `
+                        <td class="py-3 px-6 text-left whitespace-nowrap">${formattedDate}</td>
+                        <td class="py-3 px-6 text-center">${count}</td>
+                    `;
+                    statsTableBody.appendChild(row);
+                    hasData = true;
+                }
+            });
+
+            if (hasData) {
+                noStatsMessage.classList.add('hidden');
+            } else {
+                noStatsMessage.classList.remove('hidden');
+            }
+        }
+
+        async function fetchUsageStatistics() {
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'getUsageStats',
+                    }).toString(),
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success && result.stats) {
+                    allUsageStats = result.stats; // Store all stats for filtering
+                    populateYearFilter(allUsageStats); // Populate year filter based on all data
+                    renderUsageTable(allUsageStats); // Render initial table with all data
+                } else {
+                    console.error('Failed to fetch usage stats:', result.message);
+                    alert('ไม่สามารถดึงข้อมูลสถิติการใช้งานได้ โปรดตรวจสอบการตั้งค่า Apps Script 😥');
+                    statsTableBody.innerHTML = ''; // Clear table
+                    noStatsMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error fetching usage stats:', error);
+                alert('เกิดข้อผิดพลาดในการดึงข้อมูลสถิติ โปรดตรวจสอบการเชื่อมต่อ ❗');
+                statsTableBody.innerHTML = ''; // Clear table
+                noStatsMessage.classList.remove('hidden');
+            }
+        }
+
+        // Event listener for filter button
+        filterStatsBtn.addEventListener('click', () => {
+            renderUsageTable(allUsageStats); // Re-render table with current filter selections
+        });
+
+        // Custom alert function (replaces window.alert)
+        function alert(message) {
+            const existingModal = document.getElementById('customAlertModal');
+            if (existingModal) existingModal.remove();
+
+            const modalHtml = `
+                <div id="customAlertModal" class="modal">
+                    <div class="modal-content">
+                        <h3 class="text-xl font-bold mb-4 text-pink-700">แจ้งเตือน 🔔</h3>
+                        <p class="mb-6 text-gray-700">${message}</p>
+                        <button id="closeAlertBtn" class="modal-button">ตกลง</button>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.getElementById('closeAlertBtn').addEventListener('click', () => {
+                document.getElementById('customAlertModal').remove();
+            });
+        }
+
+        // Initial load: Ensure login modal is displayed
+        window.onload = () => {
+            loginModal.style.display = 'flex';
+        };
+
+    </script>
+</body>
+</html>
